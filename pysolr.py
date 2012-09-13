@@ -503,10 +503,43 @@ class Solr(object):
         # TODO: This should probably be removed when solved in core Solr level?
         return (value is None) or (isinstance(value, basestring) and len(value) == 0)
     
+
+    def _escape(self, value):
+        return value.replace(':', '\:')
+
+    def _include_specified_facets(self, params, facets):
+
+        fq_params = params.get('fq', [])
+        facet_fields = facets.get('facet_fields', [])
+
+        for facet_field, facet_field_values in facet_fields.iteritems():
+            for fq_param in fq_params:
+                if fq_param.startswith('%s:' % self._escape(facet_field)):
+                    # check that value is in result
+                    fq_param_value = fq_param[len('%s:' % self._escape(facet_field)):]
+                    found_value = False
+                    for (facet_field_value_value, facet_vield_value_count) in zip(facet_field_values[::2], facet_field_values[1::2], ):
+                        if fq_param.endswith(':%s' % self._escape(facet_field_value_value)):
+                            found_value = True
+                    if not found_value:
+                        # insert value
+                        facet_field_values.extend([self._escape(fq_param_value), 0])
+
+            facet_fields[facet_field] = facet_field_values
+
+        facets['facet_fields'] = facet_fields
+        return facets
+
+
+
     # API Methods ############################################################
     
     def search(self, q, **kwargs):
         """Performs a search and returns the results."""
+
+        pysolr_options = kwargs.get('pysolr_options', {})
+        pysolr_include_specified_facets = pysolr_options.get('include_specified_facets', False)
+
         params = {'q': q}
         params.update(kwargs)
         response = self._select(params)
@@ -518,7 +551,9 @@ class Solr(object):
         if result.get('highlighting'):
             result_kwargs['highlighting'] = result['highlighting']
         
-        if result.get('facet_counts'):
+        if pysolr_include_specified_facets:
+            result_kwargs['facets'] = self._include_specified_facets(params, result.get('facet_counts', {}))
+        elif result.get('facet_counts'):
             result_kwargs['facets'] = result['facet_counts']
         
         if result.get('spellcheck'):
