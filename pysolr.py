@@ -510,7 +510,7 @@ class Solr(object):
     def _include_specified_facets(self, params, facets):
 
         fq_params = params.get('fq', [])
-        facet_fields = facets.get('facet_fields', [])
+        facet_fields = facets.get('facet_fields', {})
 
         for facet_field, facet_field_values in facet_fields.iteritems():
             for fq_param in fq_params:
