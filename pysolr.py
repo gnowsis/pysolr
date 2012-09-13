@@ -537,7 +537,7 @@ class Solr(object):
     def search(self, q, **kwargs):
         """Performs a search and returns the results."""
 
-        pysolr_options = kwargs.get('pysolr_options', {})
+        pysolr_options = kwargs.pop('pysolr_options', {})
         pysolr_include_specified_facets = pysolr_options.get('include_specified_facets', False)
 
         params = {'q': q}
